@@ -47,27 +47,24 @@ class DSAug(nn.Module):
       cos_theta = torch.cos(angle)
       sin_theta = torch.sin(angle)
 
-      # scaling by adjusting theta (with clone one)
-      new_theta = theta.clone()
-      new_theta[:, 0, 0] *= s.squeeze()
-      new_theta[:, 1, 1] *= s.squeeze()
+      # scaling
+      theta[:, 0, 0] *= s.squeeze(1)
+      theta[:, 1, 1] *= s.squeeze(1)
 
       # rotation
-      rotation_matrices = torch.stack([torch.cat([cos_theta, -sin_theta], dim=1),torch.cat([sin_theta, cos_theta], dim=1)], dim=2)
-
-
-      # Apply rotation
-      new_theta[:, :2, :2] = torch.bmm(new_theta[:, :2, :2], rotation_matrices)
+      rotation_matrices = torch.stack([torch.cat([cos_theta, -sin_theta], dim=1), torch.cat([sin_theta, cos_theta], dim=1)], dim=2)
+      rotated_theta = torch.bmm(theta[:, :2, :2], rotation_matrices)
+      theta = torch.cat([rotated_theta, theta[:, :, 2:]], dim=2)
 
       # translation
-      new_theta[:, 0, 2] += tx.squeeze()
-      new_theta[:, 1, 2] += ty.squeeze()
+      theta[:, 0, 2] += tx.squeeze(1)
+      theta[:, 1, 2] += ty.squeeze(1)
 
       # grid generator & sampler
       grid = F.affine_grid(theta, x.size())
       x = F.grid_sample(x, grid)
 
-      return x, new_theta
+      return x, theta
 
 
     def forward(self, x):
